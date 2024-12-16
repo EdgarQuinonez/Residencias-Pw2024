@@ -1,0 +1,17 @@
+nav {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem 2.5rem;
+}
+
+.logo-container {
+    height: 2rem;
+        
+}
+
+.nav-logo {
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+    overflow: hidden;
+}
