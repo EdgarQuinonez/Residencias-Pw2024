@@ -11,6 +11,8 @@
         $password = filter_input(INPUT_POST,  "password");
             
         $res = User::login_user_with_password($username, $password);
+
+        
                         
         echo json_encode($res);                             
     } catch (Exception $e) {
