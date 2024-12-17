@@ -60,36 +60,13 @@
                     throw new Exception("El usuario y la contraseña deben de estar definidos.");
                 }
                 
-                $sql = 'SELECT ROWID, * FROM Usuario WHERE Username = :username';
-                $sth = $db->prepare($sql);
-                $sth->bindValue('username', $username, SQLITE3_TEXT);
-
-                $results = $sth->execute();                
-                               
-                if (!$results) {
-                    $errMsg = $db->lastErrorMsg();                    
-                    throw new Exception("No se completó la query: $errMsg");                
-                }                                                            
-
-                $results->reset();
-                for ($nrows = 0; is_array($results->fetchArray()); $nrows++);
-                $results->reset();
-                
-                if ($nrows === 0) {
-                    throw new Exception("El usuario no está registrado.");
-                }
-                $data = [];
-                for ($i = 0; $i < $nrows; $i++) {
-                    array_push($data, $results->fetchArray());
-                }
+                $data = User::get_user_by_username($username);
 
                 $hashedPassword = $data[0]["Password"];
                 if (!password_verify($password, $hashedPassword)) {
                     throw new Exception("La contraseña proporcionada es incorrecta.");
-                }
-                // return ["message" => print_r($data, true), "ok" => false];
-                Token::set_auth_user_session($data[0]["Username"]);
-                
+                }                
+                Token::set_auth_user_session($data[0]["Username"]);                
                 return ["message" => "Inicio de sesión exitoso", 'ok' => true];                
             } catch (Exception $e) {
                 return ["message" => $e->getMessage(), "ok" => false];
@@ -206,11 +183,72 @@
                     throw new Exception("No tienes permiso para realizar esta operación");
                 }
 
+                     
+                global $db;
+    
+                $sql = '
+                    DELETE FROM Usuario WHERE Username = :uid
+                ';
+
+                $sth = $db->prepare($sql);
+                
+                $sth->bindValue('uid', $uid);
+                
+                        
+                $results = $sth->execute();
+                if (!$results) {
+                    throw new Exception("No se completó la solicitud de borrar el usuario.");                
+                }
+
+                Token::delete_user_token_record($uid);
+                            
+                return ['message'=>"Usuario borrado exitosamente", 'ok'=>true];
+
+
+
             } catch (Exception $e) {
                 $errMsg = $e->getMessage();
                 return ['message'=>"Error al borrar usuario: $errMsg", 'ok'=>true];
             }
         }
+
+        public static function update_password($uid, $oldPassword, $newPassword) {
+            try {         
+                global $db;
+
+                $userData = User::get_user_by_username($uid);
+
+                $hashedPassword = $userData[0]["Password"];
+                if (!password_verify($oldPassword, $hashedPassword)) {
+                    throw new Exception("La contraseña proporcionada es incorrecta.");
+                }
+
+                $newHashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);                
+    
+                $sql = '
+                    UPDATE Usuario SET Password = :password WHERE Username = :uid
+                ';
+
+                $sth = $db->prepare($sql);
+                
+                $sth->bindValue('uid', $uid);
+                $sth->bindValue('password', $newHashedPassword);
+                         
+                        
+                $results = $sth->execute();
+                if (!$results) {
+                    throw new Exception("No se completó la solicitud de actualizar la contraseña.");                
+                }
+
+                            
+                return ['message'=>"Contraseña actualizada exitosamente", 'ok'=>true];
+            } catch (Exception $e) {
+                $errorMsg = $e->getMessage();
+                return ['message'=>"Error al actualizar la contraseña: $errorMsg", 'ok'=>false];
+            }
+        }
+
+
     }
 
     class Superuser extends User {
@@ -352,13 +390,18 @@
                 throw new Exception("Error al remover la sesión del usuario. No existe una cookie rememberme.");
             }
 
-
             global $db;
             [ $user, $token, $mac ] = explode(':', $cookie);
             
+            Token::delete_user_token_record($user);            
+            setcookie('rememberme', "hola", expires_or_options: time() - 3600);
+        }
+
+        public static function delete_user_token_record($uid) {
+            global $db;
             $sql = 'DELETE FROM UserToken WHERE uid = :uid';
             $sth = $db->prepare($sql);
-            $sth->bindValue("uid", $user);
+            $sth->bindValue("uid", $uid);
 
             $results = $sth->execute();
 
@@ -366,8 +409,6 @@
                 $errorMsg = $db->lastErrorMsg();
                 throw new Exception("Ocurrio un error al cerrar la sesión del usuario: $errorMsg");
             }
-            
-            setcookie('rememberme', "hola", expires_or_options: time() - 3600);
         }
 
         public static function remember_me() {
