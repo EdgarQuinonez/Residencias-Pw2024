@@ -122,6 +122,95 @@
                 return ['message'=>$e->getMessage(), 'ok'=>false];
             }
         }
+
+        public static function get_all($limit = 20, $offset = 0) {
+            try {
+                
+                global $db;
+                User::__create_table();    
+
+                $sql = '
+                    SELECT * FROM Usuario    
+                    ORDER BY CreatedAt
+                    LIMIT :limit
+                    OFFSET :offset
+                ';
+
+                $sth = $db->prepare($sql);
+                $sth->bindValue('limit', $limit);
+                $sth->bindValue('offset', $offset);
+                        
+                $results = $sth->execute();
+                if (!$results) {
+                    throw new Exception("No se completó la solicitud de recuperar usuarios.");                
+                }
+    
+                $results->reset();
+                for ($nrows = 0; is_array($results->fetchArray()); $nrows++);
+                $results->reset();            
+                          
+                if ($nrows === 0) {
+                    throw new Exception("No hay usuarios registrados.");
+                }
+
+                $data = [];
+                for ($i = 0; $i < $nrows; $i++) {
+                    array_push($data, $results->fetchArray());
+                }
+
+                return ["message"=>"Usuarios recuperados con éxito.", 'data'=>$data];
+
+            } catch (Exception $e) {
+                return ["message"=>$e->getMessage(), 'data'=>null];
+            }
+
+        }
+
+        public static function get_user_by_username($uid) {
+            global $db;
+            User::__create_table();    
+
+            $sql = '
+                SELECT * FROM Usuario WHERE Username = :uid               
+            ';
+
+            $sth = $db->prepare($sql);
+            $sth->bindValue('uid', $uid);
+                    
+            $results = $sth->execute();
+            if (!$results) {
+                throw new Exception("No se completó la solicitud de recuperar usuario.");                
+            }
+
+            $results->reset();
+            for ($nrows = 0; is_array($results->fetchArray()); $nrows++);
+            $results->reset();            
+                        
+            if ($nrows === 0) {
+                throw new Exception("No hay usuario registrado con el username $uid.");
+            }
+
+            $data = [];
+            for ($i = 0; $i < $nrows; $i++) {
+                array_push($data, $results->fetchArray());
+            }
+
+            return $data;
+        }
+
+        public static function delete_user($uid) {
+            try {
+                $role = Token::get_auth_user_session();
+                
+                if (!$role === 'Admin') {
+                    throw new Exception("No tienes permiso para realizar esta operación");
+                }
+
+            } catch (Exception $e) {
+                $errMsg = $e->getMessage();
+                return ['message'=>"Error al borrar usuario: $errMsg", 'ok'=>true];
+            }
+        }
     }
 
     class Superuser extends User {
@@ -180,11 +269,45 @@
             return $hash;
         }
 
+        public static function get_auth_user_session() {
+            try {
+
+                $cookie = $_COOKIE['rememberme'] ?? '';
+
+                if (!$cookie) {
+                    throw new Exception('La cookie está vacía.');
+                }
+                
+                // global $env;
+                [ $uid, $token, $mac ] = explode(':', $cookie);
+                // if (!hash_equals(hash_hmac('sha256', "$user:$token",  $env['SECRET_KEY']), $mac)) {
+                //     throw new Exception('La cookie es inválida.');
+                // }
+                // $usertoken = Token::__fetch_token_by_username($user);
+                // if (hash_equals($usertoken, $token)) {
+                //     // User is logged in or should be
+                //     return ['message'=>'Inicio de sesión exitoso. Cookie válida', 'cookieIsValid'=>true ];
+                    
+                // }
+                $data = User::get_user_by_username($uid);
+                
+                return ['message'=>"Objeto usuario recuperado.", 'ok'=>$data[0]];
+                
+            } catch (Exception $e) {
+                $errMsg = $e->getMessage();                
+                return ['message'=>"Error al obtener la sesión del usuario: $errMsg", 'data'=>null];
+            }
+
+        }
+
         public static function set_auth_user_session($uid)  {
             global $db;
             global $env;
             
             Token::__create_table();
+            
+
+            $userLoggedInPreviously = Token::__fetch_token_by_username($uid);
             // INSERT into USERTOKEN and expose it to client as cookie so I can later check if user is in the table.
             $sql = 'INSERT INTO UserToken (
                 uid,
@@ -193,6 +316,13 @@
                 :uid,
                 :token
             )';
+
+            if ($userLoggedInPreviously) {             
+                $sql = '
+                    UPDATE UserToken SET Token = :token WHERE uid = :uid
+                ';                
+            }
+            
 
             $token = Token::__generate_auth_token();
 
@@ -211,15 +341,17 @@
             $mac = hash_hmac("sha256", $cookie, $env["SECRET_KEY"]);
             $cookie .= ":$mac";
             
-            setcookie("rememberme", $cookie); 
+            // setcookie("rememberme", $cookie); 
+            setcookie("rememberme", $cookie, time()+60*60*24*30); 
         }
 
         public static function remove_user_session() {
-            $cookie = isset($_COOKIE['rememberme']) ? $_COOKIE['rememberme'] : '';
+            $cookie = $_COOKIE['rememberme'] ?? '';
 
-            if (!$cookie) {
+            if (empty($cookie)) {
                 throw new Exception("Error al remover la sesión del usuario. No existe una cookie rememberme.");
             }
+
 
             global $db;
             [ $user, $token, $mac ] = explode(':', $cookie);
@@ -233,29 +365,34 @@
             if (!$results) {
                 $errorMsg = $db->lastErrorMsg();
                 throw new Exception("Ocurrio un error al cerrar la sesión del usuario: $errorMsg");
-            }            
+            }
+            
+            setcookie('rememberme', "hola", expires_or_options: time() - 3600);
         }
 
         public static function remember_me() {
             try {
 
-                $cookie = isset($_COOKIE['rememberme']) ? $_COOKIE['rememberme'] : '';
+                $cookie = $_COOKIE['rememberme'] ?? '';
 
-                if (!$cookie) {
+                if (empty($cookie)) {
                     throw new Exception('La cookie está vacía.');
                 }
-                
+
                 global $env;
                 [ $user, $token, $mac ] = explode(':', $cookie);
-                if (!hash_equals(hash_hmac('sha256', "$user:$token",  $env['SECRET_KEY']), $mac)) {
-                    throw new Exception('La cookie es inválida.');
-                }
+                // if (!hash_equals(hash_hmac('sha256', "$user:$token",  $env['SECRET_KEY']), $mac)) {
+                //     throw new Exception('La cookie es inválida.');
+                // }
                 $usertoken = Token::__fetch_token_by_username($user);
-                if (hash_equals($usertoken, $token)) {
-                    // User is logged in or should be
-                    return ['message'=>'Inicio de sesión exitoso. Cookie válida', 'cookieIsValid'=>true ];
-                    
+
+                if (!$usertoken) {
+                    throw new Error("El usuario no tiene una sesión activa: Error al recuperar el token.");
                 }
+                // if (!hash_equals($usertoken, $token)) {
+                //     throw new Exception("Las cadenas proporcionadas no son iguales.");                    
+                // }
+                return ['message'=>'Inicio de sesión exitoso. Cookie válida', 'cookieIsValid'=>true ];
                 
             } catch (Exception $e) {
                 return ['message'=>$e->getMessage(), 'cookieIsValid'=>false ];
@@ -280,7 +417,8 @@
             $results->reset();
             
             if ($nrows === 0) {
-                throw new Exception("El usuario no tiene una sesión activa");
+                // throw new Exception("El usuario no tiene una sesión activa");
+                return false;
             }
             $data = [];
             for ($i = 0; $i < $nrows; $i++) {
@@ -323,7 +461,8 @@
                 AutorReporte::create_table();
     
                 $sql = '
-                    SELECT 
+                    SELECT
+                        r.Id, 
                         r.Title,
                         r.FechaPublicacion,
                         a.Nombre AS NombreAutor,
@@ -368,8 +507,45 @@
 
         }
 
+        public static function get_reporte_by_id($reporteID) {
+            global $db;
+            Reporte::__create_table();    
+
+            $sql = '
+                SELECT * FROM Reporte WHERE Id = :id               
+            ';
+
+            $sth = $db->prepare($sql);
+            $sth->bindValue('id', $reporteID);
+                    
+            $results = $sth->execute();
+            if (!$results) {
+                throw new Exception("No se completó la solicitud de recuperar el reporte.");                
+            }
+
+            $results->reset();
+            for ($nrows = 0; is_array($results->fetchArray()); $nrows++);
+            $results->reset();            
+                        
+            if ($nrows === 0) {
+                throw new Exception("No existe un reporte con esa ID.");
+            }
+
+            $data = [];
+            for ($i = 0; $i < $nrows; $i++) {
+                array_push($data, $results->fetchArray());
+            }
+
+            return $data;
+        }
+
         public static function upload_file($title, $authors,  $publishDate = null, $asesorInterno = null, $asesorExterno = null, $uri = null) {
             try {
+                $role = Token::get_auth_user_session();
+                
+                if (!$role === 'Admin') {
+                    throw new Exception("No tienes permiso para realizar esta operación");
+                }
 
                 if ($title === null || empty($title)) {
                     throw new Exception("El título no puede ser nulo.");
@@ -420,14 +596,96 @@
                 return ['message'=>"Error al subir el archivo: $errorMsg", 'ok'=>false];
             }
 
-        }
-
-        
-
-        public static function delete_file()  {
-            
         }        
+        public static function delete_file($reporteID)  {
+            try {
+                $role = Token::get_auth_user_session();
+                
+                if (!$role === 'Admin') {
+                    throw new Exception("No tienes permiso para realizar esta operación");
+                }         
+                global $db;
+    
+                $sql = '
+                    DELETE FROM Reporte WHERE Id = :id
+                ';
 
+                $sth = $db->prepare($sql);
+                
+                $sth->bindValue('id', $reporteID);
+                
+                        
+                $results = $sth->execute();
+                if (!$results) {
+                    throw new Exception("No se completó la solicitud de borrar el archivo.");                
+                }
+                            
+                return ['message'=>"Archivo borrado exitosamente", 'ok'=>true];
+            } catch (Exception $e) {
+                $errorMsg = $e->getMessage();
+                return ['message'=>"Error al borrar el archivo: $errorMsg", 'ok'=>false];
+            }
+            
+        }
+        
+        public static function update_reporte($reporteID, $title, $authors,  $publishDate = null, $asesorInterno = null, $asesorExterno = null) {
+            try {
+                // TODO: uncomment to enable authorization/permissions
+                // $role = Token::get_auth_user_session();
+                
+                // if (!$role === 'Admin') {
+                //     throw new Exception("No tienes permiso para realizar esta operación");
+                // }              
+
+                if ($title === null || empty($title)) {
+                    throw new Exception("El título no puede ser nulo.");
+                }
+
+                if (!isset($authors)) {
+                    throw new Exception("El reporte debe de tener al menos un autor.");
+                }
+
+                if (!is_array($authors)) {
+                    throw new Exception("Formato incorrecto de author");
+                }
+                global $db;
+    
+                $sql = '
+                    UPDATE Reporte SET Title = :title, FechaPublicacion = :publishDate, AsesorInterno = :asesorInterno, AsesorExterno = :asesorExterno WHERE Id = :id
+                ';
+
+                $sth = $db->prepare($sql);
+                
+                $sth->bindValue('id', $reporteID);
+                $sth->bindValue('title', $title);
+                $sth->bindValue('publishDate', $publishDate);
+                $sth->bindValue('asesorInterno', $asesorInterno);
+                $sth->bindValue('asesorExterno', $asesorExterno);                
+                        
+                $results = $sth->execute();
+                if (!$results) {
+                    throw new Exception("No se completó la solicitud de actualizar el archivo.");                
+                }
+
+                $deleteAutorReporteRes = AutorReporte::delete_records_by_reporte_id($reporteID);
+                if (!$deleteAutorReporteRes['ok']) {
+                    throw new Exception($deleteAutorReporteRes['message']);
+                }
+                
+                foreach ($authors as $a) {
+                    ['noControl'=>$noControl, 'name'=>$name] = $a;
+                    Autor::create_author($noControl, $name);
+                    AutorReporte::create_record($noControl, $reporteID);
+                }
+
+                            
+                return ['message'=>"Reporte actualizado exitosamente", 'ok'=>true];
+            } catch (Exception $e) {
+                $errorMsg = $e->getMessage();
+                return ['message'=>"Error al actualizar el reporte: $errorMsg", 'ok'=>false];
+            }
+
+        }
         public static function filter_by_column($column_name, $filter_value) {
             global $db;
 
@@ -488,7 +746,7 @@
             Autor::create_table();
             AutorReporte::create_table();
             $sql = '
-                INSERT INTO Autor (NoControl, Nombre) VALUES (:noControl, :name)
+                INSERT OR IGNORE INTO Autor (NoControl, Nombre) VALUES (:noControl, :name)
             ';
 
             $sth = $db->prepare($sql);
@@ -497,7 +755,8 @@
                     
             $results = $sth->execute();
             if (!$results) {
-                throw new Exception("No se completó la solicitud de crear un autor.");                
+                $errMsg = $db->lastErrorMsg();
+                throw new Exception("No se completó la solicitud de crear un autor: $errMsg");                
             }                    
         }
     }
@@ -540,4 +799,36 @@
             } 
 
         }
+
+        public static function delete_records_by_reporte_id($reporteID) {
+            try {
+                // $role = Token::get_auth_user_session();
+                
+                // if (!$role === 'Admin') {
+                //     throw new Exception("No tienes permiso para realizar esta operación");
+                // }         
+                global $db;
+    
+                $sql = '
+                    DELETE FROM AutorReporte WHERE ReporteID = :id
+                ';
+
+                $sth = $db->prepare($sql);
+                
+                $sth->bindValue('id', $reporteID);
+                
+                        
+                $results = $sth->execute();
+                if (!$results) {
+                    throw new Exception("No se completó la solicitud de borrar los registros en AutorReporte.");                
+                }
+                            
+                return ['message'=>"Registros borrados exitosamente", 'ok'=>true];
+            } catch (Exception $e) {
+                $errorMsg = $e->getMessage();
+                return ['message'=>"Error al borrar registros: $errorMsg", 'ok'=>false];
+            }
+        }
+
+        
     }

@@ -9,8 +9,7 @@
     <script src="index.js" type="module" defer></script>      
 </head>
 <body>
-    <nav>
-        
+    <nav>        
         <a>
             <button class="logo-container">
 

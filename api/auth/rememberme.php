@@ -7,10 +7,12 @@
         }
 
         require __DIR__ . '/../../db.php';
-    
         $res = Token::remember_me();
+
+      
     
         echo json_encode($res);
+        // echo 'endpoint reached';
     } catch (Exception $e) {
         echo json_encode($e->getMessage());
     }
