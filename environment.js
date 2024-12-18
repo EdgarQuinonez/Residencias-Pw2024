@@ -1,1 +1,1 @@
-export const API_BASE_URL = "http://edgar-pw-2024.ct.ws"; 
+export const API_BASE_URL = "http://localhost/residencias"; 
