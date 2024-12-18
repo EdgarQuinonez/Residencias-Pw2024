@@ -56,6 +56,7 @@ const getUser = async () => {
 
 const hideWriteElements = () => {    
     document.querySelector('#addReporte').classList.add('hidden');
+    document.querySelector('#userLink').classList.add('hidden');
 };
 
 const removeRowEventListeners = () => {
@@ -110,8 +111,7 @@ const getReportes = async () => {
                     authorString += ", ";
                 }
             });
-
-            // Create the row content
+            
             row.innerHTML = `
                 <td class="cell"><p>${reporte.Title || "N/A"}</p></td>
                 <td class="cell"><p>${authorString || "N/A"}</p></td>
@@ -121,8 +121,7 @@ const getReportes = async () => {
                 <td class="cell"><p>${reporte.CreatedAt || "N/A"}</p></td>
                 <td class="cell controles-cell"></td>
             `;
-
-            // Add the "Controles" buttons dynamically
+            
             const controlesCell = row.querySelector(".controles-cell");
 
             const viewButton = document.createElement("button");
@@ -154,8 +153,7 @@ const viewPdf = async (e) => {
 
     const reporteID = row.dataset.id;
     const reporte = await getReporteById(reporteID);
-    const uri = reporte.RealPath;
-    console.log(uri);
+    const uri = reporte.RealPath;    
 
     window.open(uri, "_blank");
 };

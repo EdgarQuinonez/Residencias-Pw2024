@@ -31,12 +31,12 @@
                 $realPath = "$baseUrl/public/reportes/$filename";
 
                 $uploadFileRes = save_to_file_system($uri);
-
-                $res = Reporte::upload_file($title, $authors, $publishDate, $asesorInterno, $asesorExterno, $uri, $realPath);                
+                
                 if (!$uploadFileRes['uploadOk']) {  
                     $errMsg = $uploadFileRes['message'];                  
                     throw new Exception("Hubo un error al subir el archivo: $errMsg");                    
                 }
+                $res = Reporte::upload_file($title, $authors, $publishDate, $asesorInterno, $asesorExterno, $uri, $realPath);                
                 break;
             case 'PUT':
                 $request_vars = json_decode(file_get_contents("php://input"),true);

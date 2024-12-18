@@ -14,12 +14,17 @@
 </head>
 <body>
     <nav>        
-        <a>
+        <a href="./index.php">
             <button class="logo-container">
-
                 <img src="public/assets/apple-logo.png" alt="Apple Logo" class="nav-logo">
             </button>
         </a>
+        <a id="userLink" href="./pages/users/index.php">
+            <button>
+                <p>Usuarios</p>
+            </button>
+        </a>
+        
         <div>            
 
                 <button id="logoutBtn">
