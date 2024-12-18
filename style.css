@@ -186,6 +186,11 @@ nav {
     opacity: 0.8;
 }
 
+#addReporte {
+    background-color: #4CAF50;
+    color: white;
+}
+
 @media (max-width: 768px) {
     .table {
         font-size: 14px;

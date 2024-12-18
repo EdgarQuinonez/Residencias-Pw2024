@@ -8,6 +8,7 @@ const closeBtns = document.querySelectorAll('.closeFormBtn');
 const addAuthorBtn = document.querySelector('#addAuthorBtn');
 const authorList = document.querySelector('#authorList');
 const deleteBtn = document.getElementById("deleteBtn");
+const filtrarTituloBtn = document.querySelector("#filtrarTitulo");
 
 let authorCount = 1;
 let userRole = "";
@@ -18,6 +19,7 @@ reporteForm.addEventListener('submit', (e) => onSubmit(e));
 overlay.addEventListener('click', (e) => hideReporteForm(e));
 closeBtns.forEach(el => el.addEventListener('click', () => hideReporteForm()));
 addAuthorBtn.addEventListener('click', () => addAuthorFields());
+filtrarTituloBtn.addEventListener('click', () => onFilterByTitleClick());
 if (deleteBtn) {
     deleteBtn.addEventListener("click", () => onDeleteReporteClick());
 }
@@ -61,6 +63,21 @@ const removeRowEventListeners = () => {
    tableBody.removeEventListener('click', (e) => onRowClick(e));
 };
 
+const onFilterByTitleClick = () => {
+    const parentCell = filtrarTituloBtn.parentElement;
+    let input;
+    if (!parentCell.querySelector('.filter-input')) {
+        input = document.createElement('input');
+        input.classList.add('filter-input');        
+        parentCell.appendChild(input);
+    }
+
+    input.addEventListener('keyup', (e) => {
+        const filterValue = e.target.value.trim();
+        console.log(filterValue);
+        filterByColumn('Title', filterValue);
+    })
+}
 
 
 const getReportes = async () => {
@@ -428,4 +445,76 @@ const deleteReporteById = async () => {
     } catch (error) {
         console.error(error);
     }
+};
+
+const filterByColumn = async (columnName, filterValue) => {
+    const endpoint = `${API_BASE_URL}/api/filterByColumn.php?column=${columnName}&value=${filterValue}`;
+    let reportes = [];
+
+    try {
+        const response = await fetch(endpoint);
+        if (!response.ok) {
+            throw new Error("Error al filtrar.");
+        }
+
+        const data = await response.json();
+        reportes = data.data;
+
+        const tableBody = document.querySelector('.table-body');
+        tableBody.innerHTML = '';
+
+        if (reportes.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="7">No se encontraron reportes.</td></tr>';
+            return;
+        }
+
+        reportes.forEach(reporte => {
+            const row = document.createElement("tr");
+                row.classList.add("reporte-row");
+                row.dataset.id = reporte.Id;
+
+                let authorString = "";
+                reporte.Autores.forEach((a, i, arr) => {
+                    authorString += a["Nombre"];
+                    if (i !== arr.length - 1) {
+                        authorString += ", ";
+                    }
+                });
+                
+                row.innerHTML = `
+                    <td class="cell"><p>${reporte.Title || "N/A"}</p></td>
+                    <td class="cell"><p>${authorString || "N/A"}</p></td>
+                    <td class="cell"><p>${reporte.AsesorInterno || "N/A"}</p></td>
+                    <td class="cell"><p>${reporte.AsesorExterno || "N/A"}</p></td>
+                    <td class="cell"><p>${reporte.FechaPublicacion || "N/A"}</p></td>
+                    <td class="cell"><p>${reporte.CreatedAt || "N/A"}</p></td>
+                    <td class="cell controles-cell"></td>
+                `;
+                
+                const controlesCell = row.querySelector(".controles-cell");
+
+                const viewButton = document.createElement("button");
+                viewButton.textContent = "Ver";
+                viewButton.classList.add("control-btn", "view-btn");
+                viewButton.addEventListener("click", (e) => viewPdf(e));
+
+                const downloadButton = document.createElement("button");
+                downloadButton.textContent = "Descargar";
+                downloadButton.classList.add("control-btn", "download-btn");
+                downloadButton.addEventListener("click", (e) => downloadPdf(e));
+
+                controlesCell.appendChild(viewButton);
+                controlesCell.appendChild(downloadButton);
+
+                tableBody.appendChild(row);
+        });
+        tableBody.addEventListener("click", (e) => onRowClick(e));
+    } catch (error) {
+        console.error(error);
+        reportes = [];
+    }
+
+    
+    
+
 };

@@ -801,12 +801,12 @@
 
             $valid_columns = [
                 "Title",
-                "FechaPublicacion",
-                "AutorNoControl",
-                "AutorNombre",
-                "AsesorInterno",
-                "AsesorExterno",
-                "CreatedAt"
+                // "FechaPublicacion",
+                // "AutorNoControl",
+                // "AutorNombre",
+                // "AsesorInterno",
+                // "AsesorExterno",
+                // "CreatedAt"
             ];
 
             if (!in_array($column_name, $valid_columns)) {
@@ -814,19 +814,68 @@
             }
 
 
-            $sql = 'SELECT * FROM Reporte WHERE :column = :value';
+            $sql = "
+                SELECT
+                    r.Id, 
+                    r.Title,
+                    r.FechaPublicacion,
+                    a.Nombre AS NombreAutor,
+                    a.NoControl AS NoControlAutor,
+                    r.AsesorInterno,
+                    r.AsesorExterno,
+                    r.RealPath,
+                    r.CreatedAt
+                FROM Reporte r
+                INNER JOIN AutorReporte ar ON ar.ReporteID = r.Id
+                INNER JOIN Autor a ON a.NoControl = ar.NoControl
+                WHERE r.$column_name LIKE :value
+                ORDER BY r.CreatedAt
+            ";
+
             $sth = $db->prepare($sql);
-            $sth->bindValue('column', $column_name, SQLITE3_TEXT);            
-            $sth->bindValue('value', $filter_value, SQLITE3_TEXT);            
+            $sth->bindValue(':value', "$filter_value%", SQLITE3_TEXT);            
+                        
 
             $results = $sth->execute();
             if (!$results) {
                 throw new Exception("No se pudo completar la solicitud de buscar al usuario.");                
             }
 
-            for ($nrows = 0; is_array($results->fetchArray()); $nrows++);            
+            for ($nrows = 0; is_array($results->fetchArray()); $nrows++);
+            $results->reset();
+                for ($nrows = 0; is_array($results->fetchArray()); $nrows++);
+                $results->reset();            
+                          
+                if ($nrows === 0) {
+                    throw new Exception("No hay registros de reportes.");
+                }
+
+                $data = [];
+
+                while ($row = $results->fetchArray(SQLITE3_ASSOC)) {
+                    $reporteId = $row['Id'];                    
+                    if (!isset($data[$reporteId])) {
+                        $data[$reporteId] = [
+                            'Id' => $row['Id'],
+                            'Title' => $row['Title'],
+                            'FechaPublicacion' => $row['FechaPublicacion'],
+                            'AsesorInterno' => $row['AsesorInterno'],
+                            'AsesorExterno' => $row['AsesorExterno'],
+                            'Autores' => [],
+                            'RealPath' => $row['RealPath'],
+                            'CreatedAt' => $row['CreatedAt'],
+                        ];
+                    }
+                    
+                    $data[$reporteId]['Autores'][] = [
+                        'Nombre' => $row['NombreAutor'],
+                        'NoControl' => $row['NoControlAutor']
+                    ];
+                }
+
+                $data = array_values($data);            
                       
-            return $nrows != 0;           
+            return ["message" => "Reporte recuperado con éxito.", "data" => $data];         
         }
         
     }

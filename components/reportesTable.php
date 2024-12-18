@@ -2,7 +2,10 @@
     <!-- Header -->
     <thead class="table-header">
         <tr class="header-row">
-            <th class="header-cell"><p>Título</p></th>
+            <th class="header-cell">
+                <p>Título</p>
+                <button id="filtrarTitulo"><p>Filtrar</p></but>
+            </th>
             <th class="header-cell"><p>Autores</p></th>
             <th class="header-cell"><p>Asesor interno</p></th>
             <th class="header-cell"><p>Asesor externo</p></th>
