@@ -309,15 +309,15 @@
 
         public static function get_auth_user_session() {
             try {
+                session_start();
+                $session = $_SESSION['rememberme'] ?? '';
 
-                $cookie = $_COOKIE['rememberme'] ?? '';
-
-                if (!$cookie) {
-                    throw new Exception('La cookie está vacía.');
+                if (!$session) {
+                    throw new Exception('La sesión está vacía.');
                 }
                 
                 // global $env;
-                [ $uid, $token, $mac ] = explode(':', $cookie);
+                [ $uid, $token, $mac ] = explode(':', $session);
                 // if (!hash_equals(hash_hmac('sha256', "$user:$token",  $env['SECRET_KEY']), $mac)) {
                 //     throw new Exception('La cookie es inválida.');
                 // }
@@ -375,26 +375,28 @@
                 throw new Exception("Se presentó un error al establecer la sesión del usuario: $errorMsg");
             }
 
-            $cookie = "$uid:$token";
-            $mac = hash_hmac("sha256", $cookie, $env["SECRET_KEY"]);
-            $cookie .= ":$mac";
+            $session = "$uid:$token";
+            $mac = hash_hmac("sha256", $session, $env["SECRET_KEY"]);
+            $session .= ":$mac";
             
+            session_start();
             // setcookie("rememberme", $cookie); 
-            setcookie("rememberme", $cookie, time()+60*60*24*30); 
+            $_SESSION['rememberme'] = $session;
         }
 
         public static function remove_user_session() {
-            $cookie = $_COOKIE['rememberme'] ?? '';
+            session_start();
+            $session = $_SESSION['rememberme'] ?? '';
 
-            if (empty($cookie)) {
-                throw new Exception("Error al remover la sesión del usuario. No existe una cookie rememberme.");
+            if (empty($session)) {
+                throw new Exception("Error al remover la sesión del usuario. No existe una sesión rememberme.");
             }
 
             global $db;
-            [ $user, $token, $mac ] = explode(':', $cookie);
+            [ $user, $token, $mac ] = explode(':', $session);
             
             Token::delete_user_token_record($user);            
-            setcookie('rememberme', "hola", expires_or_options: time() - 3600);
+            unset($_SESSION['rememberme']);
         }
 
         public static function delete_user_token_record($uid) {
@@ -413,15 +415,15 @@
 
         public static function remember_me() {
             try {
-
-                $cookie = $_COOKIE['rememberme'] ?? '';
-
-                if (empty($cookie)) {
-                    throw new Exception('La cookie está vacía.');
+                session_start();
+                // $cookie = $_COOKIE['rememberme'] ?? '';
+                $session = $_SESSION['rememberme'] ?? '';
+                if (empty($session)) {
+                    throw new Exception('rememberme no existe dentro de tus variables de sesión.');
                 }
 
                 global $env;
-                [ $user, $token, $mac ] = explode(':', $cookie);
+                [ $user, $token, $mac ] = explode(':', $session);
                 // if (!hash_equals(hash_hmac('sha256', "$user:$token",  $env['SECRET_KEY']), $mac)) {
                 //     throw new Exception('La cookie es inválida.');
                 // }
@@ -433,10 +435,10 @@
                 // if (!hash_equals($usertoken, $token)) {
                 //     throw new Exception("Las cadenas proporcionadas no son iguales.");                    
                 // }
-                return ['message'=>'Inicio de sesión exitoso. Cookie válida', 'cookieIsValid'=>true ];
+                return ['message'=>'Inicio de sesión exitoso. Sesión válida', 'remembermeIsValid'=>true ];
                 
             } catch (Exception $e) {
-                return ['message'=>$e->getMessage(), 'cookieIsValid'=>false ];
+                return ['message'=>$e->getMessage(), 'remembermeIsValid'=>false ];
             }
         }
 
@@ -509,7 +511,8 @@
                         a.Nombre AS NombreAutor,
                         a.NoControl AS NoControlAutor,
                         r.AsesorInterno,
-                        r.AsesorExterno
+                        r.AsesorExterno,
+                        r.CreatedAt
                     FROM Reporte r
                     INNER JOIN AutorReporte ar ON ar.ReporteID = r.Id
                     INNER JOIN Autor a ON a.NoControl = ar.NoControl
@@ -536,12 +539,29 @@
                 }
 
                 $data = [];
-                for ($i = 0; $i < $nrows; $i++) {
-                    array_push($data, $results->fetchArray());
+
+                while ($row = $results->fetchArray(SQLITE3_ASSOC)) {
+                    $reporteId = $row['Id'];                    
+                    if (!isset($data[$reporteId])) {
+                        $data[$reporteId] = [
+                            'Id' => $row['Id'],
+                            'Title' => $row['Title'],
+                            'FechaPublicacion' => $row['FechaPublicacion'],
+                            'AsesorInterno' => $row['AsesorInterno'],
+                            'AsesorExterno' => $row['AsesorExterno'],
+                            'Autores' => [],
+                            'CreatedAt' => $row['CreatedAt']
+                        ];
+                    }
+                    
+                    $data[$reporteId]['Autores'][] = [
+                        'Nombre' => $row['NombreAutor'],
+                        'NoControl' => $row['NoControlAutor']
+                    ];
                 }
 
+                $data = array_values($data);
                 return ["message"=>"Reportes recuperados con éxito.", 'data'=>$data];
-
             } catch (Exception $e) {
                 return ["message"=>$e->getMessage(), 'data'=>null];
             }
@@ -549,36 +569,80 @@
         }
 
         public static function get_reporte_by_id($reporteID) {
-            global $db;
-            Reporte::__create_table();    
-
-            $sql = '
-                SELECT * FROM Reporte WHERE Id = :id               
-            ';
-
-            $sth = $db->prepare($sql);
-            $sth->bindValue('id', $reporteID);
-                    
-            $results = $sth->execute();
-            if (!$results) {
-                throw new Exception("No se completó la solicitud de recuperar el reporte.");                
+            try {
+                global $db;
+                Reporte::__create_table();
+                Autor::create_table();
+                AutorReporte::create_table();
+        
+                // Query to fetch the report details and its authors
+                $sql = '
+                    SELECT 
+                        r.Id, 
+                        r.Title, 
+                        r.FechaPublicacion, 
+                        r.AsesorInterno, 
+                        r.AsesorExterno, 
+                        r.CreatedAt,
+                        r.URI,
+                        a.Nombre AS NombreAutor,
+                        a.NoControl AS NoControlAutor
+                    FROM Reporte r
+                    LEFT JOIN AutorReporte ar ON ar.ReporteID = r.Id
+                    LEFT JOIN Autor a ON a.NoControl = ar.NoControl
+                    WHERE r.Id = :id
+                ';
+        
+                $sth = $db->prepare($sql);
+                $sth->bindValue('id', $reporteID);
+        
+                $results = $sth->execute();
+                if (!$results) {
+                    throw new Exception("No se completó la solicitud de recuperar el reporte.");
+                }
+        
+                $results->reset();
+                for ($nrows = 0; is_array($results->fetchArray()); $nrows++);
+                $results->reset();
+        
+                if ($nrows === 0) {
+                    throw new Exception("No existe un reporte con esa ID.");
+                }
+        
+                $data = null;
+        
+                while ($row = $results->fetchArray(SQLITE3_ASSOC)) {                    
+                    if ($data === null) {
+                        $data = [
+                            'Id' => $row['Id'],
+                            'Title' => $row['Title'],
+                            'FechaPublicacion' => $row['FechaPublicacion'],
+                            'AsesorInterno' => $row['AsesorInterno'],
+                            'AsesorExterno' => $row['AsesorExterno'],
+                            'URI' => $row['URI'],
+                            'CreatedAt' => $row['CreatedAt'],
+                            'Autores' => []
+                        ];
+                    }
+                            
+                    if (!empty($row['NombreAutor']) && !empty($row['NoControlAutor'])) {
+                        $data['Autores'][] = [
+                            'Nombre' => $row['NombreAutor'],
+                            'NoControl' => $row['NoControlAutor']
+                        ];
+                    }
+                }
+        
+                if (!$data) {
+                    throw new Exception("No se encontraron datos del reporte.");
+                }
+        
+                return ["message" => "Reporte recuperado con éxito.", "data" => $data];
+            } catch (Exception $e) {
+                return ["message" => $e->getMessage(), "data" => null];
             }
-
-            $results->reset();
-            for ($nrows = 0; is_array($results->fetchArray()); $nrows++);
-            $results->reset();            
-                        
-            if ($nrows === 0) {
-                throw new Exception("No existe un reporte con esa ID.");
-            }
-
-            $data = [];
-            for ($i = 0; $i < $nrows; $i++) {
-                array_push($data, $results->fetchArray());
-            }
-
-            return $data;
         }
+        
 
         public static function upload_file($title, $authors,  $publishDate = null, $asesorInterno = null, $asesorExterno = null, $uri = null) {
             try {

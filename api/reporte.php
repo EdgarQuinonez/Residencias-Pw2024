@@ -15,7 +15,7 @@
             case 'POST':
                 $title = filter_input(INPUT_POST, 'title');                
                 $publishDate = filter_input(INPUT_POST, 'publishDate');        
-                $authors = filter_input(INPUT_POST, 'author'); // Should be an array of objs
+                $authors = filter_input(INPUT_POST, 'authors');
                 $asesorInterno = filter_input(INPUT_POST, 'asesorInterno');
                 $asesorExterno = filter_input(INPUT_POST, 'asesorExterno');
                 if (!isset($_FILES['file'])) {

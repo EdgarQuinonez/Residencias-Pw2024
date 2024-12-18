@@ -1,5 +1,5 @@
 <?php
-    // require_once __DIR__ . '/api/auth/rememberme.php';
+    require __DIR__ . '/api/auth/rememberme.php';
 ?>
 
 <!DOCTYPE html>
@@ -20,19 +20,29 @@
                 <img src="public/assets/apple-logo.png" alt="Apple Logo" class="nav-logo">
             </button>
         </a>
-        <div>
-            <a href="pages/login/index.php">
+        <div>            
 
                 <button id="logoutBtn">
                     <p>
                         Cerrar Sesión
                     </p>
                 </button>
-            </a>
+            
         </div>
     </nav>
-    <main>
+    <main class="container">
         <h1>Reportes de residencias</h1>
+        <div>
+            <button id="addReporte">
+                <p>
+                    <span>+</span> Nuevo
+                </p>
+            </button>
+        </div>
+        <?php include "./components/reportesTable.php" ?>
     </main>
+    
+    <?php include "./components/reporteForm.php" ?>
+
 </body>
 </html>

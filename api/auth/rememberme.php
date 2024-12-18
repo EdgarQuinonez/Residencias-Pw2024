@@ -4,9 +4,9 @@
     try {
 
 
-        if (!isset($_GET)) {
-            throw new Exception("No se ha recibido la GET request.");
-        }
+        // if (!isset($_GET)) {
+        //     throw new Exception("No se ha recibido la GET request.");
+        // }
 
         global $env;
         $baseUrl = $env['BASE_URL'];
@@ -14,10 +14,11 @@
         require __DIR__ . '/../../db.php';
         $res = Token::remember_me();
 
-        if (!$res['cookieIsValid']) {
+        if (!$res['remembermeIsValid']) {
+
             header("Location: $baseUrl/pages/login/index.php");
         }
-
+        // TODO: Comment out this line when rememberme, login and logout work properly
         // echo json_encode($res);        
                     
     } catch (Exception $e) {

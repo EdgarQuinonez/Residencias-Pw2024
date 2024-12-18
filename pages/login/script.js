@@ -13,7 +13,7 @@ const onSubmit = async (e) => {
         // Limpiar el user input
         for (const pair of formData.entries()) {     
             const [key, value] = pair;                  
-            formData.set(key, value);            
+            formData.set(key, value.trim());            
         }        
             
         const response = await fetch(endpoint, {

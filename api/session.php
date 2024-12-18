@@ -1,9 +1,9 @@
 <?php    
     try {
 
-        if (!isset($_GET)) {
-            throw new Exception("No se ha recibido la GET request.");
-        }
+        // if (!isset($_GET)) {
+        //     throw new Exception("No se ha recibido la GET request.");
+        // }
 
         require __DIR__ . '/../db.php';
     
