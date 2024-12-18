@@ -516,7 +516,7 @@
                     FROM Reporte r
                     INNER JOIN AutorReporte ar ON ar.ReporteID = r.Id
                     INNER JOIN Autor a ON a.NoControl = ar.NoControl
-                    ORDER BY r.FechaPublicacion
+                    ORDER BY r.CreatedAt
                     LIMIT :limit
                     OFFSET :offset
                 ';

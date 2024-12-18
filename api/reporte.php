@@ -37,7 +37,7 @@
                 $request_vars = json_decode(file_get_contents("php://input"),true);
                 $reporteID = $request_vars['reporteID'];
                 $title = $request_vars['title'];                
-                $authors = $request_vars['author'];
+                $authors = $request_vars['authors'];
 
                 if (empty($reporteID) || empty($reporteID) || empty($authors)) {
                     throw new Exception("Las variables reporteID, title y author no pueden estar indefinidas.");
@@ -50,8 +50,7 @@
                 $res = Reporte::update_reporte($reporteID, $title, $authors, $publishDate, $asesorInterno, $asesorExterno);
                 break;
             case 'DELETE':
-                parse_str(file_get_contents("php://input"),$request_vars);
-                // TODO: Confirm wether .pdf is added here or in body request.
+                parse_str(file_get_contents("php://input"),$request_vars);                
                 $filename = $request_vars['filename'];
                 $reporteID = $request_vars['id'];
 
@@ -59,9 +58,9 @@
                     throw new Exception("Error al borrar el archivo: Las variables filename y reporteID deben de estar definidas.");
                 }
 
-                $targetBase = __DIR__ . "/../public/reportes";                
-                $uri = "$targetBase/$filename";
-                $path = realpath($uri);
+                // $targetBase = __DIR__ . "/../public/reportes";                
+                // $uri = "$targetBase/$filename";
+                $path = realpath($filename);
                 if (!$path) {
                     throw new Exception("Error al borrar el archivo: $filename no existe.");
                 }
@@ -75,7 +74,6 @@
     } catch (Exception $e) {
         echo json_encode($e->getMessage());
     }
-
     function save_to_file_system($targetFile) {
         try {
 

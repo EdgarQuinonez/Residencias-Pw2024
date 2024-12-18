@@ -7,6 +7,7 @@ const overlay = document.querySelector('.overlay');
 const closeBtns = document.querySelectorAll('.closeFormBtn');
 const addAuthorBtn = document.querySelector('#addAuthorBtn');
 const authorList = document.querySelector('#authorList');
+const deleteBtn = document.getElementById("deleteBtn");
 
 let authorCount = 1;
 
@@ -16,7 +17,9 @@ reporteForm.addEventListener('submit', (e) => onSubmit(e));
 overlay.addEventListener('click', (e) => hideReporteForm(e));
 closeBtns.forEach(el => el.addEventListener('click', () => hideReporteForm()));
 addAuthorBtn.addEventListener('click', () => addAuthorFields());
-
+if (deleteBtn) {
+    deleteBtn.addEventListener("click", () => onDeleteReporteClick());
+}
 
 const onInit = async () => {
     await getReportes();
@@ -82,6 +85,10 @@ const onRowClick = async (event) => {
     openReporteFormForEditing(reporte);
 };
 
+const onDeleteReporteClick = async (e) => {        
+       await deleteReporteById();    
+};
+
 
 const getReporteById = async (reporteID) => {
     try {
@@ -141,43 +148,60 @@ const hideReporteForm = () => {
 const onSubmit = async (e) => {
     try {
         e.preventDefault();
-        const formData = new FormData(e.target);
-
         
+        const formData = new FormData(e.target);
         const authors = [];
         for (let i = 0; i < authorCount; i++) {
             const name = formData.get(`author[${i}][name]`).trim();
             const noControl = formData.get(`author[${i}][noC]`).trim();
 
-            const authorObj = {
-                name: name,
-                noControl: noControl
-            };
-
-            authors.push(authorObj);
             formData.delete(`author[${i}][name]`);
             formData.delete(`author[${i}][noC]`);
-        }
-        formData.set("authors", JSON.stringify(authors));
-        
-        let method = 'POST';
-        let endpoint = API_BASE_URL + "/api/reporte.php";
-        
-        if (e.target.dataset.isEditing === "true") {
-            method = 'PUT';
-            const reporteId = e.target.dataset.reporteId; // Retrieve the ID of the existing reporte
-            endpoint += `?id=${reporteId}`; // Append ID for PUT request
+
+            authors.push({ name, noControl });
         }
 
+        const title = formData.get("title").trim();
+        const publishDate = formData.get("publishDate").trim();
+        const asesorInterno = formData.get("asesorInterno").trim();
+        const asesorExterno = formData.get("asesorExterno").trim();
+
+        let method = "POST";
+        let endpoint = API_BASE_URL + "/api/reporte.php";
+        let body;
         
-        const response = await fetch(endpoint, {
+        if (e.target.dataset.isEditing === "true") {
+            method = "PUT";
+            const reporteId = e.target.dataset.reporteId;
+            
+            body = JSON.stringify({
+                reporteID: reporteId,
+                title,
+                publishDate,
+                asesorInterno,
+                asesorExterno,
+                authors,
+            });
+        } else {            
+            formData.set('authors', JSON.stringify(authors))
+
+            body = formData;
+        }
+
+        console.log(body);
+        
+        const fetchOptions = {
             method: method,
-            body: formData
-        });
+            headers: method === "PUT" ? { "Content-Type": "application/json" } : undefined,
+            body: body,
+        };
+        
+        const response = await fetch(endpoint, fetchOptions);
 
         if (!response.ok) {
             throw new Error(`Error al hacer la ${method} request a reporte.php`);
         }
+
         const data = await response.json();
 
         if (!data.ok) {
@@ -191,6 +215,7 @@ const onSubmit = async (e) => {
         console.error(error);
     }
 };
+
 
 
 const addAuthorFields = () => {
@@ -212,15 +237,42 @@ const addAuthorFields = () => {
     authorCount++;
 }
 
-const populateReporteForm = (reporte) => {    
+const populateReporteForm = (reporte, isEditing = false) => {
     reporteForm.classList.remove("hidden");
     overlay.classList.remove("hidden");
-
+    
+    if (isEditing) {
+        
+        const deleteBtn = document.getElementById("deleteBtn");
+        const addBtn = document.getElementById("addReporte");
+        
+        deleteBtn.classList.remove("hidden");
+        addBtn.querySelector("p").textContent = "Actualizar";
+        
+        
+        const fileInput = reporteForm.querySelector("input[name='file']");
+        if (fileInput) {
+            fileInput.classList.add("hidden");
+            fileInput.required = false;
+        }
+    } else {        
+        const addBtn = document.getElementById("addReporte");
+        addBtn.querySelector("p").textContent = "Nuevo";
+        const deleteBtn = document.getElementById("deleteBtn");
+        deleteBtn.classList.add("hidden");
+                
+        const fileInput = reporteForm.querySelector("input[name='file']");
+        if (fileInput) {
+            fileInput.classList.remove("hidden");
+            fileInput.required = true;
+        }
+    }
+    
     reporteForm.querySelector("input[name='title']").value = reporte.Title || "";
     reporteForm.querySelector("input[name='publishDate']").value = reporte.FechaPublicacion || "";
     reporteForm.querySelector("input[name='asesorInterno']").value = reporte.AsesorInterno || "";
     reporteForm.querySelector("input[name='asesorExterno']").value = reporte.AsesorExterno || "";
-    
+        
     authorList.innerHTML = "";
     (reporte.Autores || []).forEach((author, index) => {
         const authorItem = document.createElement("li");
@@ -245,11 +297,48 @@ const populateReporteForm = (reporte) => {
 const openReporteFormForEditing = (reporte) => {
     reporteForm.dataset.isEditing = "true";
     reporteForm.dataset.reporteId = reporte.Id;
-    populateReporteForm(reporte);
+    populateReporteForm(reporte, true);
 };
 
 const openReporteFormForAdding = () => {
     reporteForm.dataset.isEditing = "false";
     reporteForm.removeAttribute("data-reporteId");
     populateReporteForm({});
+};
+
+const deleteReporteById = async () => {
+    const reporteID = reporteForm.dataset.reporteId; // Get reporteID from the form's dataset
+    const reporte = await getReporteById(reporteID);
+    if (!reporteID) {
+        console.error('Reporte ID is missing');
+        return;
+    }    
+    const endpoint = `${API_BASE_URL}/api/reporte.php`;
+
+    try {
+        const response = await fetch(endpoint, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                filename: reporte.URI,
+                id: reporteID
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error al eliminar el reporte con ID ${reporteID}`);
+        }
+
+        const data = await response.json();
+        if (!data.ok) {
+            throw new Error(`Error al eliminar el reporte: ${data.message}`);
+        }
+        
+        hideReporteForm();
+        await getReportes();
+    } catch (error) {
+        console.error(error);
+    }
 };

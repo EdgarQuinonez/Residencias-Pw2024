@@ -41,13 +41,18 @@
             <input type="text" name="asesorExterno">
         </label>    
     </div>
+    <div class="bottomBtns">
+        <button class="hidden" id="deleteBtn" type="button">
+            <p>Borrar</p>
+        </button>
 
-    <div>  
-        <button class="closeFormBtn closeBtn" type="button">
-            <p>Cerrar</p>
-        </button>
-        <button class="saveFormBtn" type="submit">
-            <p>Añadir</p>
-        </button>
+        <div>  
+            <button class="closeFormBtn closeBtn" type="button">
+                <p>Cerrar</p>
+            </button>
+            <button class="saveFormBtn" id="addReporte"type="submit">
+                <p>Añadir</p>
+            </button>
+        </div>
     </div>
 </form>
