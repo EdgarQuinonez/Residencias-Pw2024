@@ -1,11 +1,11 @@
 <div class="overlay hidden closeFormBtn"></div>
 <form id="reporteForm" class="hidden">
-    <div>
+    <div class="closeBtnContainer">
         <button class="closeFormBtn xBtn" type="button">
             <p>X</p>
         </button>
     </div>
-    <h1>Añadir un reporte</h1>
+    <h1 class="reporteForm__title">Añadir un reporte</h1>
     <input type="file" name="file" id="file" accept=".pdf" size="<?php echo 50 * 1024 * 1024 ?>" required>
     <div>
         <label>
@@ -46,13 +46,13 @@
             <p>Borrar</p>
         </button>
 
-        <div>  
+        <div class="bottomBtns__down-right">  
             <button class="closeFormBtn closeBtn" type="button">
                 <p>Cerrar</p>
             </button>
-            <button class="saveFormBtn" id="addReporte"type="submit">
+            <button class="saveFormBtn" id="saveReporte" type="submit">
                 <p>Añadir</p>
             </button>
         </div>
-    </div>
+    </div> 
 </form>

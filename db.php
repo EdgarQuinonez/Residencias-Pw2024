@@ -485,6 +485,7 @@
                 "AsesorInterno" TEXT,
                 "AsesorExterno" TEXT,
                 "URI" TEXT,
+                "RealPath" TEXT,
                 "CreatedAt" DATETIME DEFAULT CURRENT_TIMESTAMP                
             )');
 
@@ -512,6 +513,7 @@
                         a.NoControl AS NoControlAutor,
                         r.AsesorInterno,
                         r.AsesorExterno,
+                        r.RealPath,
                         r.CreatedAt
                     FROM Reporte r
                     INNER JOIN AutorReporte ar ON ar.ReporteID = r.Id
@@ -550,7 +552,8 @@
                             'AsesorInterno' => $row['AsesorInterno'],
                             'AsesorExterno' => $row['AsesorExterno'],
                             'Autores' => [],
-                            'CreatedAt' => $row['CreatedAt']
+                            'RealPath' => $row['RealPath'],
+                            'CreatedAt' => $row['CreatedAt'],
                         ];
                     }
                     
@@ -574,8 +577,7 @@
                 Reporte::__create_table();
                 Autor::create_table();
                 AutorReporte::create_table();
-        
-                // Query to fetch the report details and its authors
+                        
                 $sql = '
                     SELECT 
                         r.Id, 
@@ -585,6 +587,7 @@
                         r.AsesorExterno, 
                         r.CreatedAt,
                         r.URI,
+                        r.RealPath,
                         a.Nombre AS NombreAutor,
                         a.NoControl AS NoControlAutor
                     FROM Reporte r
@@ -620,6 +623,7 @@
                             'AsesorInterno' => $row['AsesorInterno'],
                             'AsesorExterno' => $row['AsesorExterno'],
                             'URI' => $row['URI'],
+                            'RealPath' => $row['RealPath'],
                             'CreatedAt' => $row['CreatedAt'],
                             'Autores' => []
                         ];
@@ -644,7 +648,7 @@
         }
         
 
-        public static function upload_file($title, $authors,  $publishDate = null, $asesorInterno = null, $asesorExterno = null, $uri = null) {
+        public static function upload_file($title, $authors,  $publishDate = null, $asesorInterno = null, $asesorExterno = null, $uri = null, $realPath = null) {
             try {
                 $role = Token::get_auth_user_session();
                 
@@ -669,8 +673,8 @@
                 AutorReporte::create_table();
     
                 $sql = '
-                    INSERT INTO Reporte (Title, FechaPublicacion, AsesorInterno, AsesorExterno, URI) 
-                    VALUES (:title, :publishDate, :asesorInterno, :asesorExterno, :uri)
+                    INSERT INTO Reporte (Title, FechaPublicacion, AsesorInterno, AsesorExterno, URI, RealPath) 
+                    VALUES (:title, :publishDate, :asesorInterno, :asesorExterno, :uri, :realPath)
                 ';
 
                 $sth = $db->prepare($sql);
@@ -680,6 +684,7 @@
                 $sth->bindValue('asesorInterno', $asesorInterno);
                 $sth->bindValue('asesorExterno', $asesorExterno);
                 $sth->bindValue('uri', $uri);
+                $sth->bindValue('realPath', $realPath);
                         
                 $results = $sth->execute();
                 if (!$results) {

@@ -10,6 +10,7 @@ const authorList = document.querySelector('#authorList');
 const deleteBtn = document.getElementById("deleteBtn");
 
 let authorCount = 1;
+let userRole = "";
 
 logoutBtn.addEventListener('click', () => logoutUser());
 addReporteBtn.addEventListener('click', () => showReporteForm());
@@ -23,7 +24,44 @@ if (deleteBtn) {
 
 const onInit = async () => {
     await getReportes();
+    const user = await getUser();
+    // console.log(user);
+    userRole = user['Role'];
+
+
+    if (userRole != 'Admin') {
+        hideWriteElements();
+        // removeRowEventListeners();
+    }
 }
+
+const getUser = async () => {
+    try {
+
+        const endpoint = API_BASE_URL + "/api/session.php";
+        const response = await fetch(endpoint);
+        if (!response.ok) {
+            throw new Error("Error al recibir el rol del usuario.")
+        }
+        const data = await response.json();
+
+        return data['ok'];
+    } catch (e) {
+        console.error(e);
+    }
+
+}
+
+const hideWriteElements = () => {    
+    document.querySelector('#addReporte').classList.add('hidden');
+};
+
+const removeRowEventListeners = () => {
+   const tableBody = document.querySelector('.table-body');
+   tableBody.removeEventListener('click', (e) => onRowClick(e));
+};
+
+
 
 const getReportes = async () => {
     const endpoint = API_BASE_URL + "/api/reporte.php";
@@ -34,47 +72,97 @@ const getReportes = async () => {
             throw new Error(`Error al cargar los reportes: ${response.statusText}`);
         }
 
-        const data = await response.json();        
+        const data = await response.json();
         if (!data) {
             throw new Error("No se cargaron los reportes: " + data.message);
         }
 
         const reportes = data.data;
-        const tableBody = document.querySelector("tbody");        
-        tableBody.innerHTML = "";        
-        
+        const tableBody = document.querySelector(".table-body");
+        tableBody.innerHTML = "";
+
         reportes.forEach((reporte) => {
             const row = document.createElement("tr");
-            row.classList.add("reporteRow");
+            row.classList.add("reporte-row");
             row.dataset.id = reporte.Id;
 
-            let authorString = "";  
+            let authorString = "";
             reporte.Autores.forEach((a, i, arr) => {
                 authorString += a["Nombre"];
-                if (i != arr.length - 1) {
+                if (i !== arr.length - 1) {
                     authorString += ", ";
                 }
             });
-                        
+
+            // Create the row content
             row.innerHTML = `
-                <td><p>${reporte.Title || "N/A"}</p></td>
-                <td><p>${authorString || "N/A"}</p></td>
-                <td><p>${reporte.AsesorInterno || "N/A"}</p></td>
-                <td><p>${reporte.AsesorExterno || "N/A"}</p></td>
-                <td><p>${reporte.FechaPublicacion || "N/A"}</p></td>
-                <td><p>${reporte.CreatedAt || "N/A"}</p></td>
+                <td class="cell"><p>${reporte.Title || "N/A"}</p></td>
+                <td class="cell"><p>${authorString || "N/A"}</p></td>
+                <td class="cell"><p>${reporte.AsesorInterno || "N/A"}</p></td>
+                <td class="cell"><p>${reporte.AsesorExterno || "N/A"}</p></td>
+                <td class="cell"><p>${reporte.FechaPublicacion || "N/A"}</p></td>
+                <td class="cell"><p>${reporte.CreatedAt || "N/A"}</p></td>
+                <td class="cell controles-cell"></td>
             `;
-            
+
+            // Add the "Controles" buttons dynamically
+            const controlesCell = row.querySelector(".controles-cell");
+
+            const viewButton = document.createElement("button");
+            viewButton.textContent = "Ver";
+            viewButton.classList.add("control-btn", "view-btn");
+            viewButton.addEventListener("click", (e) => viewPdf(e));
+
+            const downloadButton = document.createElement("button");
+            downloadButton.textContent = "Descargar";
+            downloadButton.classList.add("control-btn", "download-btn");
+            downloadButton.addEventListener("click", (e) => downloadPdf(e));
+
+            controlesCell.appendChild(viewButton);
+            controlesCell.appendChild(downloadButton);
+
             tableBody.appendChild(row);
         });
+
         tableBody.addEventListener("click", (e) => onRowClick(e));
     } catch (e) {
         console.error("Error al cargar los reportes: ", e);
     }
 };
 
-const onRowClick = async (event) => {
+const viewPdf = async (e) => {
+    const row = e.target.closest("tr");    
+
+    if (!row || !row.dataset.id) return;
+
+    const reporteID = row.dataset.id;
+    const reporte = await getReporteById(reporteID);
+    const uri = reporte.RealPath;
+    console.log(uri);
+
+    window.open(uri, "_blank");
+};
+
+const downloadPdf = async (e) => {
+    const row = e.target.closest("tr");
+
+    if (!row || !row.dataset.id) return;
+
+    const reporteID = row.dataset.id;
+    const reporte = await getReporteById(reporteID);
+    const uri = reporte.RealPath;    
     
+    const anchor = document.createElement("a");
+    anchor.href = uri;
+    anchor.download = uri.split("/").pop(); 
+    anchor.click();
+};
+
+
+
+const onRowClick = async (event) => {    
+    if (userRole != 'Admin') return;
+    if (event.target.classList.contains('control-btn')) return;
     const row = event.target.closest("tr");
 
     if (!row || !row.dataset.id) return;
@@ -187,8 +275,7 @@ const onSubmit = async (e) => {
 
             body = formData;
         }
-
-        console.log(body);
+        
         
         const fetchOptions = {
             method: method,
@@ -244,10 +331,10 @@ const populateReporteForm = (reporte, isEditing = false) => {
     if (isEditing) {
         
         const deleteBtn = document.getElementById("deleteBtn");
-        const addBtn = document.getElementById("addReporte");
+        const saveBtn = document.getElementById("saveReporte");
         
         deleteBtn.classList.remove("hidden");
-        addBtn.querySelector("p").textContent = "Actualizar";
+        saveBtn.querySelector("p").textContent = "Actualizar";
         
         
         const fileInput = reporteForm.querySelector("input[name='file']");
@@ -256,8 +343,8 @@ const populateReporteForm = (reporte, isEditing = false) => {
             fileInput.required = false;
         }
     } else {        
-        const addBtn = document.getElementById("addReporte");
-        addBtn.querySelector("p").textContent = "Nuevo";
+        const saveBtn = document.getElementById("saveReporte");
+        saveBtn.querySelector("p").textContent = "Crear";
         const deleteBtn = document.getElementById("deleteBtn");
         deleteBtn.classList.add("hidden");
                 
@@ -307,7 +394,7 @@ const openReporteFormForAdding = () => {
 };
 
 const deleteReporteById = async () => {
-    const reporteID = reporteForm.dataset.reporteId; // Get reporteID from the form's dataset
+    const reporteID = reporteForm.dataset.reporteId;
     const reporte = await getReporteById(reporteID);
     if (!reporteID) {
         console.error('Reporte ID is missing');

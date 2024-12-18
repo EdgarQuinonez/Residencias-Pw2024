@@ -1,41 +1,15 @@
-<table id="reportesTable">
+<table id="reportesTable" class="table">
     <!-- Header -->
-     <thead>
-
-         <tr>
-     
-             <th>
-                 <p>
-                     Título
-                 </p>        
-             </th>
-             <th>
-                 <p>
-                     Autores
-                 </p>
-             </th>
-             <th>
-                 <p>
-                     Asesor interno
-                 </p>
-             </th>
-             <th>
-                 <p>
-                     Asesor externo
-                 </p>
-             </th>
-             <th>
-                 <p>
-                     Fecha de publicación
-                 </p>
-             </th>
-             <th>
-                 <p>
-                     Creado en
-                 </p>
-             </th>
-         </tr>
-     </thead>
-    <tbody>        
-    </tbody>
+    <thead class="table-header">
+        <tr class="header-row">
+            <th class="header-cell"><p>Título</p></th>
+            <th class="header-cell"><p>Autores</p></th>
+            <th class="header-cell"><p>Asesor interno</p></th>
+            <th class="header-cell"><p>Asesor externo</p></th>
+            <th class="header-cell"><p>Fecha de publicación</p></th>
+            <th class="header-cell"><p>Creado en</p></th>
+            <th class="header-cell"><p>Controles</p></th>
+        </tr>
+    </thead>
+    <tbody class="table-body"></tbody>
 </table>

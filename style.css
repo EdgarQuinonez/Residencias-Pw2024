@@ -4,6 +4,15 @@ nav {
     padding: 1rem 2.5rem;
 }
 
+.container {
+    margin: 0 8rem;
+
+}
+
+.title {
+    font-weight: bold;
+    font-size: x-large;
+}
 .logo-container {
     height: 2rem;
         
@@ -34,7 +43,154 @@ nav {
 }
 
 #reporteForm {
-    position: relative;
-    padding: 2rem 3rem;
+    position: fixed;
+    padding: 1rem 2rem;
+    width: fit-content;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     z-index: 3;
+    background-color: white;
+    border-radius: 0.25rem;
+}
+
+.reportRow {
+    padding: 0 0.5rem;
+    border-top: solid 1px;
+    border-bottom: solid 1px;
+
+}
+.authorItem {
+    display: flex;    
+}
+
+.authorList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.closeBtnContainer {
+    display: flex;
+    justify-content: end;
+    align-items: center;
+}
+
+.reporteForm__title {
+    text-align: center;
+    font-weight: bold;
+}
+
+.bottomBtns {
+    position:relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 0;
+}
+.bottomBtns__down-right {
+    position: relative;
+    padding-right: 0.125rem;
+    right: 0;    
+}
+
+
+#deleteBtn {
+    background-color: red;
+    color: white;
+        
+}
+
+#saveReporte {
+    background-color: green;
+    color: white;
+}
+
+.closeBtn {
+    background-color: darkslategray;
+    color: white;
+}
+
+.xBtn {
+    background-color: transparent;
+    font-weight: bold;
+}
+
+/* General Table Styles */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 16px;
+    text-align: left;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+}
+
+.table-header {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.header-row {
+    border-bottom: 2px solid #ddd;
+}
+
+.header-cell {
+    padding: 12px 15px;
+    font-weight: bold;
+}
+
+.table-body .reporte-row {
+    border-bottom: 1px solid #ddd;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.table-body .reporte-row:hover {
+    background-color: #f1f1f1;
+}
+
+.cell {
+    padding: 10px 15px;
+}
+
+.cell p {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+.control-btn {
+    padding: 5px 10px;
+    margin: 0 5px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.view-btn {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.download-btn {
+    background-color: #008CBA;
+    color: white;
+}
+
+.control-btn:hover {
+    opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+    .table {
+        font-size: 14px;
+    }
+    .header-cell, .cell {
+        padding: 8px 10px;
+    }
 }

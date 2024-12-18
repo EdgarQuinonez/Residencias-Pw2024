@@ -1,6 +1,8 @@
 <?php
     try {
         require __DIR__ . "/../db.php";
+        $env = parse_ini_file(__DIR__ . "/../.env");
+
         $requestMethod = $_SERVER['REQUEST_METHOD'];        
         
         switch ($requestMethod) {
@@ -13,6 +15,7 @@
                 }
                 break;
             case 'POST':
+                global $env;
                 $title = filter_input(INPUT_POST, 'title');                
                 $publishDate = filter_input(INPUT_POST, 'publishDate');        
                 $authors = filter_input(INPUT_POST, 'authors');
@@ -24,14 +27,16 @@
                 $targetBase = __DIR__ . "/../public/reportes";
                 $filename = basename($_FILES['file']['name']);
                 $uri = "$targetBase/$filename";
+                $baseUrl = $env['BASE_URL'];
+                $realPath = "$baseUrl/public/reportes/$filename";
 
                 $uploadFileRes = save_to_file_system($uri);
 
+                $res = Reporte::upload_file($title, $authors, $publishDate, $asesorInterno, $asesorExterno, $uri, $realPath);                
                 if (!$uploadFileRes['uploadOk']) {  
                     $errMsg = $uploadFileRes['message'];                  
                     throw new Exception("Hubo un error al subir el archivo: $errMsg");                    
                 }
-                $res = Reporte::upload_file($title, $authors, $publishDate, $asesorInterno, $asesorExterno, $uri);                
                 break;
             case 'PUT':
                 $request_vars = json_decode(file_get_contents("php://input"),true);

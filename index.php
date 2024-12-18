@@ -1,5 +1,5 @@
 <?php
-    require __DIR__ . '/api/auth/rememberme.php';
+    require __DIR__ . '/api/auth/rememberme.php';    
 ?>
 
 <!DOCTYPE html>
@@ -31,7 +31,7 @@
         </div>
     </nav>
     <main class="container">
-        <h1>Reportes de residencias</h1>
+        <h1 class="title">Reportes de residencias</h1>
         <div>
             <button id="addReporte">
                 <p>
